@@ -11,10 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('consultation_requests', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+  Schema::create('consultation_requests', function (Blueprint $table) {
+  $table->id();
+    $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+    $table->string('name');
+    $table->enum('contact_method', ['whatsapp','instagram','email']);
+    $table->string('contact_value');
+    $table->text('request_details');
+    $table->date('proposed_date')->nullable();
+    $table->enum('status', ['pending','contacted','accepted','rejected','completed'])->default('pending');
+    $table->text('admin_notes')->nullable();
+    $table->timestamps();
+});
     }
 
     /**

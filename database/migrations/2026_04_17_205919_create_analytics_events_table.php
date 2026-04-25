@@ -11,10 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('analytics_events', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+  Schema::create('analytics_events', function (Blueprint $table) {
+   $table->id();
+    $table->string('event_type');
+    $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+    $table->json('metadata')->nullable();
+    $table->timestamp('created_at')->useCurrent();
+});
     }
 
     /**

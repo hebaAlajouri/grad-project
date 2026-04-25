@@ -7,16 +7,22 @@ use Illuminate\Database\Eloquent\Model;
 class CartItem extends Model
 {
     public $timestamps = false;
-    protected $primaryKey = 'cart_item_id';
-    protected $fillable = ['user_id', 'product_id', 'quantity'];
 
-    public function product()
-    {
-        return $this->belongsTo(Product::class, 'product_id', 'product_id');
-    }
+    protected $fillable = [
+        'user_id',
+        'product_id',
+        'quantity'
+    ];
+
+    protected $dates = ['added_at'];
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
     }
 }

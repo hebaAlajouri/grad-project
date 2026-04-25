@@ -11,10 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('products', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+   Schema::create('products', function (Blueprint $table) {
+   $table->id();
+    $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
+    $table->string('name');
+    $table->text('description')->nullable();
+    $table->decimal('price', 10, 2);
+    $table->string('image_url')->nullable();
+    $table->enum('stock_status', ['in_stock', 'out_of_stock'])->default('in_stock');
+    $table->integer('quantity')->default(0);
+    $table->timestamps();
+});
     }
 
     /**

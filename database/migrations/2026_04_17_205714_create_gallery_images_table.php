@@ -11,10 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('gallery_images', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+  Schema::create('gallery_images', function (Blueprint $table) {
+   $table->id();
+    $table->string('title')->nullable();
+    $table->text('description')->nullable();
+    $table->string('image_url');
+    $table->foreignId('uploaded_by')->constrained('users');
+    $table->timestamp('uploaded_at')->useCurrent();
+    $table->boolean('is_active')->default(true);
+});
     }
 
     /**

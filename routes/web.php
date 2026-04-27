@@ -11,7 +11,7 @@ use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\DashboardController;
 Route::get('/', function () {
     return view('home');
-})->name('home');
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -24,7 +24,7 @@ require __DIR__.'/auth.php';
 Route::get('/portf', function () {
     return view('portfolio');
 })->name('portfolio');
-Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
+Route::/*middleware(['auth', 'admin'])->*/prefix('admin')->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
 

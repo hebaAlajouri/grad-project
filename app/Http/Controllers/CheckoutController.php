@@ -1,82 +1,128 @@
 <?php
 
+
+
 namespace App\Http\Controllers;
 
+use App\Models\Address;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class CheckoutController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-    }
-
-    // FR-2.4: Show checkout page
     public function index()
     {
-        $cartItems = CartItem::with('product')
-            ->where('user_id', Auth::id())
+        $cartItems = CartItem::with('product.category')
+            ->where('user_id', auth()->id())
             ->get();
 
         if ($cartItems->isEmpty()) {
-            return redirect()->route('store.cart')->with('error', 'Your cart is empty.');
+            return redirect()->route('cart.index');
         }
 
-        $subtotal  = $cartItems->sum(fn($i) => $i->product->price * $i->quantity);
-        $addresses = Auth::user()->addresses ?? collect();
+        $addresses = Address::where('user_id', auth()->id())->get();
 
-        return view('store.checkout', compact('cartItems', 'subtotal', 'addresses'));
+        $subtotal = $cartItems->sum(fn ($item) => $item->product->price * $item->quantity);
+        $discount = session('cart_discount', 0);
+        $total = max(0, $subtotal - $discount);
+
+        return view('checkout.index', compact(
+            'cartItems',
+            'addresses',
+            'subtotal',
+            'discount',
+            'total'
+        ));
     }
 
-    // FR-2.4 + FR-2.5: Place order (COD)
     public function place(Request $request)
     {
         $request->validate([
-            'address_id'     => 'required|exists:addresses,id',
-            'payment_method' => 'required|in:cod',
-            'notes'          => 'nullable|string|max:500',
+            'address_id' => 'nullable|exists:addresses,id',
+            'street' => 'required_without:address_id|string|max:255',
+            'city' => 'required_without:address_id|string|max:255',
+            'region' => 'nullable|string|max:255',
+            'postal_code' => 'nullable|string|max:255',
+            'notes' => 'nullable|string',
         ]);
 
         $cartItems = CartItem::with('product')
-            ->where('user_id', Auth::id())
+            ->where('user_id', auth()->id())
             ->get();
 
         if ($cartItems->isEmpty()) {
-            return redirect()->route('store.cart')->with('error', 'Your cart is empty.');
+            return redirect()->route('cart.index');
         }
 
-        DB::transaction(function () use ($request, $cartItems) {
-            $subtotal = $cartItems->sum(fn($i) => $i->product->price * $i->quantity);
+        return DB::transaction(function () use ($request, $cartItems) {
+            $addressId = $request->address_id;
+
+            if (!$addressId) {
+                $address = Address::create([
+                    'user_id' => auth()->id(),
+                    'label' => 'Home',
+                    'street' => $request->street,
+                    'city' => $request->city,
+                    'region' => $request->region,
+                    'postal_code' => $request->postal_code,
+                    'country' => 'Jordan',
+                    'is_default' => 0,
+                ]);
+
+                $addressId = $address->id;
+            }
+
+            $subtotal = $cartItems->sum(fn ($item) => $item->product->price * $item->quantity);
+            $discount = session('cart_discount', 0);
+            $total = max(0, $subtotal - $discount);
 
             $order = Order::create([
-                'user_id'         => Auth::id(),
-                'address_id'      => $request->address_id,
-                'subtotal'        => $subtotal,
-                'discount_amount' => 0,
-                'total'           => $subtotal,
-                'payment_method'  => 'cod',
-                'status'          => 'pending',
-                'notes'           => $request->notes,
+                'user_id' => auth()->id(),
+                'address_id' => $addressId,
+                'coupon_id' => session('cart_coupon_id'),
+                'subtotal' => $subtotal,
+                'discount_amount' => $discount,
+                'total' => $total,
+                'payment_method' => 'cod',
+                'status' => 'pending',
+                'notes' => $request->notes,
             ]);
 
             foreach ($cartItems as $item) {
                 OrderItem::create([
-                    'order_id'   => $order->order_id,
+                    'order_id' => $order->id,
                     'product_id' => $item->product_id,
-                    'quantity'   => $item->quantity,
+                    'quantity' => $item->quantity,
                     'unit_price' => $item->product->price,
                 ]);
+
+                Product::where('id', $item->product_id)->decrement('quantity', $item->quantity);
             }
 
-            // Clear cart after order
-            CartItem::where('user_id', Auth::id())->delete();
-        });
+            CartItem::where('user_id', auth()->id())->delete();
 
-        return redirect()->route('store.index')->with('success', 'Order placed successfully! 🎉');
+            session()->forget([
+                'cart_count',
+                'cart_coupon_id',
+                'cart_discount',
+            ]);
+
+            return redirect()->route('checkout.success', $order->id);
+        });
+    }
+
+    public function success(Order $order)
+    {
+        if ($order->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $order->load('items.product', 'address');
+
+        return view('checkout.success', compact('order'));
     }
 }

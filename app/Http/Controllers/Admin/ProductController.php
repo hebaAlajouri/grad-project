@@ -30,7 +30,7 @@ class ProductController extends Controller
         $data = $request->all();
 
         if ($request->hasFile('image')) {
-            $data['image_url'] = $request->file('image')->store('products');
+           $data['image_url'] = 'storage/' . $request->file('image')->store('products', 'public');
         }
 
         Product::create($data);

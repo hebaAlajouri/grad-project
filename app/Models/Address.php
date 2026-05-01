@@ -17,6 +17,8 @@ class Address extends Model
     /**
      * الأعمدة المسموح تعبئتها
      */
+      public $timestamps = false;
+
     protected $fillable = [
         'user_id',
         'label',
